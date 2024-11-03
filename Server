@@ -1,1 +1,56 @@
+#include "LicensePlateDetector.h"
+
+using namespace std;
+using namespace cv;
+
+LicensePlateDetector::LicensePlateDetector(){
+                if(ocr.Init(NULL,"eng", tesseract :: OEM_DEFAULT)){
+                        cerr<<"Error: Could not initialize Tesseract!"<<endl;
+                }
+                ocr.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+                ocr.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+}
+
+
+string LicensePlateDetector :: recognizeLicensePlate(const Mat& licensePlate){
+
+        ocr.SetImage(licensePlate.data,licensePlate.cols, licensePlate.rows, 3, licensePlate.step);
+        string licenseNumber = ocr.GetUTF8Text();
+        return licenseNumber;
+}
+
+int main(){
+	int msg_queue_id = msgget(MSG_KEY, 0666);
+	if(msg_queue_id == -1){
+		cerr<<"Error: Could not access message queue!"<<endl;
+		return -1;
+	}
+
+	message_buffer msg;
+	if(msgrcv(msg_queue_id, &msg, MAX_MSG_SIZE, 0,0) == -1){
+		cerr<<"Error: Failed to recieve message"<<endl;
+		return -1;
+	}
+
+	string imagePath(msg.msg_text);
+	cout<<"Server : Recieved image path: " << imagePath<<endl;
+	
+		
+        Mat licensePlate = imread(imagePath);
+	
+	if(licensePlate.empty()){
+		cerr<<"Error: Could not load image from path: "<<imagePath<<endl;
+		return -1;
+	}
+
+	LicensePlateDetector detector;
+
+	//Recognize the license plate
+	string licenseNumber = detector.recognizeLicensePlate(licensePlate);
+
+	//print the extracted License Number
+	cout<<"License Plate Number:" <<licenseNumber<<endl;
+
+	return 0;
+}
 
